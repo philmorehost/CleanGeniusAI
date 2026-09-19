@@ -1,31 +1,50 @@
-name: Build and Release
+name: Build and Release CleanGenius AI Installer (.exe)
+
 on:
   push:
+    branches:
+      - main
+      - master
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 18
-      - uses: actions/setup-python@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      - name: Install dependencies
+
+      - name: Install Dependencies
         run: |
           npm install
           pip install -r requirements.txt
-      - name: Run Tests
+
+      - name: Run Backend Tests
         run: |
           pytest tests/backend
-      - name: Build Electron App
-        run: npm run build
-      - name: Upload Installer Artifact
+
+      - name: Build Executable Installer (.exe)
+        run: |
+          npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload CleanGenius-AI Executable Installer
         uses: actions/upload-artifact@v3
         with:
-          name: CleanGenius-AI-Setup.exe
-          path: dist/*.exe
+          name: CleanGenius-AI-Setup
+          path: |
+            dist/*.exe
+            dist/*.blockmap

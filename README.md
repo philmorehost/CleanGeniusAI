@@ -6,6 +6,34 @@ CleanGenius AI is a modern Windows disk cleanup application designed for develop
 
 ---
 
+## 💻 How to Download and Install the `.exe` File
+
+You do **not** need to compile the code locally to install CleanGenius AI on your Windows machine. GitHub automatically generates the `.exe` installer for every push and release.
+
+### Step-by-Step Installation Guide
+
+1. **Download the Executable (.exe)**:
+   - Go to the **Actions** tab on the GitHub repository.
+   - Click on the latest **Build and Release CleanGenius AI Installer (.exe)** workflow run.
+   - Scroll down to the **Artifacts** section and download `CleanGenius-AI-Setup.zip`.
+   - Extract the zip archive to find `CleanGenius-AI-Setup.exe`.
+
+2. **Run the Installer**:
+   - Double-click `CleanGenius-AI-Setup.exe`.
+   - Windows SmartScreen may show a prompt; click **More info** -> **Run anyway**.
+   - Follow the stage-by-stage installation setup wizard to select your installation directory and create desktop/start menu shortcuts.
+
+3. **In-App Stage-by-Stage Onboarding Guide**:
+   - Launch CleanGenius AI after installation.
+   - The application opens the **5-Stage Guided Setup Wizard**:
+     - **Stage 1**: System Compatibility Check
+     - **Stage 2**: AI Provider & Free DeepSeek API Key Configuration Guide
+     - **Stage 3**: Default Scan & Folder Exclusions Selection
+     - **Stage 4**: Safety, Backup & Rollback Retention Setup
+     - **Stage 5**: Setup Complete & Trigger Initial Fast Scan
+
+---
+
 ## 🌟 Key Features
 
 - ⚡ **Multi-Engine Scanning**: Fast scan, Deep scan, Custom folder scan, and Registry analysis.
@@ -17,52 +45,29 @@ CleanGenius AI is a modern Windows disk cleanup application designed for develop
 
 ---
 
-## 🚀 Quick Start
+## 🛠️ Development & Building from Source
 
 ### Prerequisites
 - Node.js (v18+)
 - Python (3.10+)
 
-### Installation & Execution
-
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/yourusername/cleangenius-ai.git
-   cd cleangenius-ai
-   ```
-
-2. **Install Node.js Dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Install Python Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Environment Setup**:
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your DeepSeek/OpenAI/Gemini API keys
-   ```
-
-5. **Run Development Server**:
-   ```bash
-   npm run dev
-   ```
-
----
-
-## 🛠️ Build Executable Installer
-
-To compile the production `.exe` installer (NSIS & Portable) for Windows:
+### Quick Commands
 
 ```bash
+# Clone repository
+git clone https://github.com/yourusername/cleangenius-ai.git
+cd cleangenius-ai
+
+# Install dependencies
+npm install
+pip install -r requirements.txt
+
+# Run development mode
+npm run dev
+
+# Compile standalone Windows .exe installer
 npm run build
 ```
-
-The output setup binaries will be generated under the `dist/` folder.
 
 ---
 

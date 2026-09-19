@@ -13,6 +13,7 @@ const pages = {
   schedule: 'pages/schedule.html',
   history: 'pages/history.html',
   settings: 'pages/settings.html',
+  onboarding: 'pages/onboarding.html',
 };
 
 async function navigate(page) {
@@ -26,6 +27,7 @@ async function navigate(page) {
     content.innerHTML = html;
     if (page === 'dashboard') loadDashboardData();
     if (page === 'settings') loadSettingsData();
+    if (page === 'onboarding' && window.initWiz) window.initWiz();
   } catch (err) {
     content.innerHTML = `<div class="card"><h2>Error loading page ${page}</h2></div>`;
   }
