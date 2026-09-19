@@ -36,7 +36,6 @@
         "nsis",
         "portable"
       ],
-      "icon": "resources/icons/icon.ico",
       "requestedExecutionLevel": "requireAdministrator",
       "extraResources": [
         {
@@ -54,8 +53,6 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "installerIcon": "resources/icons/installer-icon.ico",
-      "uninstallerIcon": "resources/icons/uninstaller-icon.ico",
       "license": "LICENSE"
     },
     "files": [

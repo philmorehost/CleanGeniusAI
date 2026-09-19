@@ -1,4 +1,4 @@
-name: Build and Release CleanGenius AI Installer (.exe)
+name: Build CleanGenius AI Installer (.exe)
 
 on:
   push:
@@ -7,6 +7,10 @@ on:
       - master
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 permissions:
@@ -54,7 +58,7 @@ jobs:
           if-no-files-found: error
 
       - name: Create GitHub Release with Attached .exe Installer
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.exe
