@@ -13,6 +13,7 @@ class PromptOptimizer:
                 categories[cat]["samples"].append(f.get("path") or f.get("file_path", ""))
 
         return {
+            "files": files[:100],
             "summary": categories,
             "total_files": len(files),
             "context": scan_results.get("context", {})
