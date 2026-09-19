@@ -1,0 +1,36 @@
+<div class="card">
+  <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;">Disk Scan Engine</h2>
+  <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Select scan intensity mode to identify junk files, dev caches, and registry issues.</p>
+
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+    <div class="card" style="border-color: var(--primary-blue); cursor: pointer;" onclick="runScan('fast')">
+      <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">⚡ Fast Scan</h3>
+      <p style="color: var(--text-muted); font-size: 13px;">Scans common temp folders, browser caches, and npm caches.</p>
+    </div>
+    <div class="card" style="cursor: pointer;" onclick="runScan('deep')">
+      <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">🔍 Deep Scan</h3>
+      <p style="color: var(--text-muted); font-size: 13px;">Comprehensive analysis of user profile, logs, and build artifacts.</p>
+    </div>
+    <div class="card" style="cursor: pointer;" onclick="runScan('registry')">
+      <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">🛠️ Registry Scan</h3>
+      <p style="color: var(--text-muted); font-size: 13px;">Scans invalid MRUs, uninstaller keys, and orphaned registry paths.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="scan-progress-card" style="display: none;">
+  <h3 class="card-title" id="scan-status-title">Scanning in progress...</h3>
+  <div style="background-color: #0f1419; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 12px;">
+    <div id="scan-progress-bar" style="width: 0%; height: 100%; background-color: var(--primary-blue); transition: width 0.3s;"></div>
+  </div>
+  <p style="color: var(--text-muted); font-size: 13px;" id="scan-status-msg">Initializing...</p>
+</div>
+
+<div class="card" id="scan-results-card" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h3 class="card-title" style="margin: 0;">Scan Results & AI Recommendations</h3>
+    <button class="btn" onclick="navigate('cleanup')">Proceed to Cleanup</button>
+  </div>
+  <div id="scan-results-content" style="font-size: 14px; color: var(--text-main);">
+  </div>
+</div>

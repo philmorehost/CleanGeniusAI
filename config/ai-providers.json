@@ -1,0 +1,44 @@
+{
+  "free_providers": [
+    {
+      "name": "DeepSeek",
+      "id": "deepseek",
+      "models": ["deepseek-chat", "deepseek-coder"],
+      "free_tier": "Generous free API credits with rate limits",
+      "pricing": "$0.14 / 1M input tokens, $0.28 / 1M output tokens",
+      "context_window": "32K tokens"
+    },
+    {
+      "name": "Google Gemini",
+      "id": "gemini",
+      "models": ["gemini-pro"],
+      "free_tier": "60 requests/minute free",
+      "pricing": "Free tier available",
+      "context_window": "32K tokens"
+    },
+    {
+      "name": "Ollama",
+      "id": "ollama",
+      "models": ["llama2", "mistral", "deepseek-coder"],
+      "free_tier": "100% Free local execution",
+      "pricing": "Free (runs locally)",
+      "context_window": "Depends on local model"
+    }
+  ],
+  "paid_providers": [
+    {
+      "name": "OpenAI",
+      "id": "openai",
+      "models": ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"],
+      "pricing": "GPT-3.5: $0.50/1M tokens, GPT-4: $10-30/1M tokens",
+      "context_window": "16K-128K tokens"
+    },
+    {
+      "name": "Anthropic Claude",
+      "id": "claude",
+      "models": ["claude-3-haiku-20240307", "claude-3-sonnet-20240229", "claude-3-opus-20240229"],
+      "pricing": "Sonnet: $3.00/1M input, $15.00/1M output",
+      "context_window": "200K tokens"
+    }
+  ]
+}

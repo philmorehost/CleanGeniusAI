@@ -1,0 +1,31 @@
+name: Build and Release
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          npm install
+          pip install -r requirements.txt
+      - name: Run Tests
+        run: |
+          pytest tests/backend
+      - name: Build Electron App
+        run: npm run build
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: CleanGenius-AI-Setup.exe
+          path: dist/*.exe
