@@ -60,6 +60,7 @@
       "src/**/*",
       "resources/**/*",
       "config/**/*",
+      "build/**/*",
       "package.json"
     ]
   }
