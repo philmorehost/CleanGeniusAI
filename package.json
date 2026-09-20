@@ -53,7 +53,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "license": "LICENSE"
+      "license": "LICENSE",
+      "include": "build/installer.nsh"
     },
     "files": [
       "src/**/*",
