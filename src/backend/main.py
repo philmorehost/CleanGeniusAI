@@ -198,12 +198,16 @@ def start_cleanup():
         files = db.get_files_for_cleanup(scan_id, categories, file_ids)
         safety = safety_manager.check_files(files)
 
-        if not safety["safe"] and options.get("strict_safety", True):
+        strict_safety = options.get("strict_safety", False)
+        if not safety["safe"] and strict_safety:
             return jsonify({
                 "success": False,
                 "error": "Safety check blocked deletion of protected or open files.",
                 "details": safety
             }), 400
+
+        # Filter to safe files unless strict_safety was enforced
+        files_to_clean = safety.get("safe_files", files) if not safety["safe"] else files
 
         cleanup_id = db.create_cleanup_session(scan_id)
 
@@ -219,9 +223,9 @@ def start_cleanup():
                 update_cb(1, 100, "Creating rollback point...")
 
                 if config.get("safety.enable_rollback", True):
-                    rollback_manager.create_restore_point(cleanup_id, files)
+                    rollback_manager.create_restore_point(cleanup_id, files_to_clean)
 
-                res = cleanup_engine.cleanup(files, options, update_cb)
+                res = cleanup_engine.cleanup(files_to_clean, options, update_cb)
                 if cleanup_id in active_cleanups:
                     active_cleanups[cleanup_id]["status"] = "completed"
                     active_cleanups[cleanup_id]["progress"] = 100
