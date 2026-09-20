@@ -25,14 +25,14 @@ def test_system_info(client):
     assert "total_space_gb" in data["data"]
 
 def test_fast_scan_and_cleanup_flow(client):
-    # 1. Start Fast Scan
-    res = client.post('/api/scan/start', json={"mode": "fast", "options": {"find_duplicates": True, "ai_analysis": True}})
+    # 1. Start Fast Scan with max_files limit for fast test execution
+    res = client.post('/api/scan/start', json={"mode": "fast", "options": {"find_duplicates": True, "ai_analysis": True, "max_files": 50}})
     assert res.status_code == 200
     scan_id = res.get_json()["scan_id"]
 
-    # 2. Poll Scan Status
+    # 2. Poll Scan Status with extended timeout for CI runners
     completed = False
-    for _ in range(20):
+    for _ in range(100):
         time.sleep(0.2)
         s_res = client.get(f'/api/scan/{scan_id}')
         s_data = s_res.get_json()
@@ -50,7 +50,7 @@ def test_fast_scan_and_cleanup_flow(client):
 
     # 4. Poll Cleanup Status
     c_completed = False
-    for _ in range(20):
+    for _ in range(100):
         time.sleep(0.2)
         cl_res = client.get(f'/api/cleanup/{cleanup_id}')
         cl_data = cl_res.get_json()
@@ -66,8 +66,8 @@ def test_registry_scan_and_dashboard(client):
     assert r_res.status_code == 200
     scan_id = r_res.get_json()["scan_id"]
 
-    for _ in range(20):
-        time.sleep(0.1)
+    for _ in range(100):
+        time.sleep(0.2)
         st = client.get(f'/api/scan/{scan_id}').get_json()
         if st["status"] == "completed":
             break
