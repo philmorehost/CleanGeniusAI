@@ -63,6 +63,9 @@ class DiskScanner:
     ) -> Dict:
         options = options or {}
 
+        if progress_cb:
+            progress_cb(1, 100, "Resolving target drive locations...")
+
         # Target paths resolution
         if mode == "custom" and paths:
             roots = paths
@@ -92,7 +95,16 @@ class DiskScanner:
                 continue
             valid_roots.append(root)
 
+        if not valid_roots:
+            # Fallback to system temp if none valid
+            tmp = os.environ.get("TEMP", "/tmp")
+            if os.path.exists(tmp):
+                valid_roots.append(tmp)
+
         processed = 0
+        if progress_cb:
+            progress_cb(5, max_files, "Scanning files in target locations...")
+
         for root in valid_roots:
             if os.path.isfile(root):
                 try:
@@ -106,6 +118,7 @@ class DiskScanner:
                         "category": self.categorize(root),
                         "age_days": (datetime.now() - datetime.fromtimestamp(st.st_atime)).days,
                     })
+                    processed += 1
                 except Exception:
                     skipped += 1
                 continue
@@ -141,10 +154,13 @@ class DiskScanner:
                         "age_days": (datetime.now() - datetime.fromtimestamp(st.st_atime)).days,
                     })
                     processed += 1
-                    if progress_cb and processed % 100 == 0:
+                    if progress_cb and (processed % 10 == 0 or processed == 1):
                         progress_cb(processed, max_files, f"Scanning {dirpath[:50]}...")
                 if len(files) >= max_files:
                     break
+
+        if progress_cb:
+            progress_cb(max_files, max_files, f"Scanned {len(files)} files successfully.")
 
         by_cat = {}
         for f in files:

@@ -97,9 +97,12 @@ def start_scan():
             try:
                 def update_cb(current, total, msg=""):
                     p = int((current / total) * 100) if total > 0 else 0
-                    active_scans[scan_id]["progress"] = p
-                    active_scans[scan_id]["message"] = msg
-                    db.update_scan_progress(scan_id, p, msg)
+                    if scan_id in active_scans:
+                        active_scans[scan_id]["progress"] = p
+                        active_scans[scan_id]["message"] = msg or f"Scanning files ({p}%)..."
+                    db.update_scan_progress(scan_id, p, msg or f"Scanning files ({p}%)...")
+
+                update_cb(1, 100, "Starting file scan engine...")
 
                 if scan_mode == "registry":
                     res = registry_scanner.scan(update_cb)
@@ -107,36 +110,46 @@ def start_scan():
                     res = scanner.scan(scan_mode, paths, options, update_cb)
 
                 if options.get("find_duplicates", True) and res.get("files"):
+                    update_cb(80, 100, "Analyzing duplicate files...")
                     dupes = duplicate_finder.find_duplicates(res["files"], update_cb)
                     res["duplicates"] = dupes
 
                 db.store_scan_results(scan_id, res)
 
                 if options.get("ai_analysis", True):
-                    ai_recs = ai_analyzer.analyze(res)
-                    db.store_ai_recommendations(scan_id, ai_recs)
-                    res["ai_recommendations"] = ai_recs
+                    update_cb(90, 100, "Generating AI recommendations...")
+                    try:
+                        ai_recs = ai_analyzer.analyze(res)
+                        db.store_ai_recommendations(scan_id, ai_recs)
+                        res["ai_recommendations"] = ai_recs
+                    except Exception as ai_err:
+                        logger.error(f"AI analysis non-fatal error: {ai_err}")
 
-                active_scans[scan_id]["status"] = "completed"
-                active_scans[scan_id]["progress"] = 100
-                active_scans[scan_id]["results"] = res
+                if scan_id in active_scans:
+                    active_scans[scan_id]["status"] = "completed"
+                    active_scans[scan_id]["progress"] = 100
+                    active_scans[scan_id]["message"] = "Scan completed successfully."
+                    active_scans[scan_id]["results"] = res
                 db.complete_scan_session(scan_id, res)
             except Exception as ex:
                 logger.error(f"Scan error in worker: {ex}")
-                active_scans[scan_id]["status"] = "failed"
-                active_scans[scan_id]["error"] = str(ex)
+                if scan_id in active_scans:
+                    active_scans[scan_id]["status"] = "failed"
+                    active_scans[scan_id]["error"] = str(ex)
+                    active_scans[scan_id]["message"] = f"Scan failed: {ex}"
                 db.fail_scan_session(scan_id, str(ex))
 
         thread = Thread(target=worker)
         thread.daemon = True
-        thread.start()
 
         active_scans[scan_id] = {
             "thread": thread,
             "status": "running",
-            "progress": 0,
-            "message": "Initializing scan..."
+            "progress": 1,
+            "message": "Initializing scan session..."
         }
+
+        thread.start()
 
         return jsonify({
             "success": True,
@@ -157,6 +170,7 @@ def get_scan_status(scan_id):
                 "status": sc["status"],
                 "progress": sc.get("progress", 0),
                 "message": sc.get("message", ""),
+                "error": sc.get("error", None),
                 "results": sc.get("results") if sc["status"] == "completed" else None
             })
 
@@ -197,33 +211,41 @@ def start_cleanup():
             try:
                 def update_cb(curr, total, msg=""):
                     p = int((curr / total) * 100) if total > 0 else 0
-                    active_cleanups[cleanup_id]["progress"] = p
-                    active_cleanups[cleanup_id]["message"] = msg
-                    db.update_cleanup_progress(cleanup_id, p, msg)
+                    if cleanup_id in active_cleanups:
+                        active_cleanups[cleanup_id]["progress"] = p
+                        active_cleanups[cleanup_id]["message"] = msg or f"Cleaning files ({p}%)..."
+                    db.update_cleanup_progress(cleanup_id, p, msg or f"Cleaning files ({p}%)...")
+
+                update_cb(1, 100, "Creating rollback point...")
 
                 if config.get("safety.enable_rollback", True):
                     rollback_manager.create_restore_point(cleanup_id, files)
 
                 res = cleanup_engine.cleanup(files, options, update_cb)
-                active_cleanups[cleanup_id]["status"] = "completed"
-                active_cleanups[cleanup_id]["progress"] = 100
-                active_cleanups[cleanup_id]["result"] = res
+                if cleanup_id in active_cleanups:
+                    active_cleanups[cleanup_id]["status"] = "completed"
+                    active_cleanups[cleanup_id]["progress"] = 100
+                    active_cleanups[cleanup_id]["message"] = "Cleanup completed successfully."
+                    active_cleanups[cleanup_id]["result"] = res
                 db.complete_cleanup_session(cleanup_id, res)
             except Exception as ex:
-                active_cleanups[cleanup_id]["status"] = "failed"
-                active_cleanups[cleanup_id]["error"] = str(ex)
+                if cleanup_id in active_cleanups:
+                    active_cleanups[cleanup_id]["status"] = "failed"
+                    active_cleanups[cleanup_id]["error"] = str(ex)
+                    active_cleanups[cleanup_id]["message"] = f"Cleanup failed: {ex}"
                 db.fail_cleanup_session(cleanup_id, str(ex))
 
         thread = Thread(target=worker)
         thread.daemon = True
-        thread.start()
 
         active_cleanups[cleanup_id] = {
             "thread": thread,
             "status": "running",
-            "progress": 0,
-            "message": "Initializing cleanup..."
+            "progress": 1,
+            "message": "Initializing cleanup session..."
         }
+
+        thread.start()
 
         return jsonify({"success": True, "cleanup_id": cleanup_id})
     except Exception as e:
@@ -239,6 +261,7 @@ def get_cleanup_status(cleanup_id):
                 "status": cl["status"],
                 "progress": cl.get("progress", 0),
                 "message": cl.get("message", ""),
+                "error": cl.get("error", None),
                 "result": cl.get("result") if cl["status"] == "completed" else None
             })
 

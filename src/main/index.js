@@ -110,23 +110,35 @@ class CleanGeniusApp {
 
   async startPythonBackend() {
     return new Promise((resolve, reject) => {
-      const pythonPath = process.env.NODE_ENV === 'development' || !process.resourcesPath
-        ? 'python3'
-        : path.join(process.resourcesPath, 'backend', 'main.py');
+      const isWin = process.platform === 'win32';
+      let pythonExecutable = isWin ? 'python' : 'python3';
+      let scriptPath = path.join(__dirname, '../backend/main.py');
+      let spawnArgs = [scriptPath];
 
-      const scriptPath = path.join(__dirname, '../backend/main.py');
+      if (process.resourcesPath && process.env.NODE_ENV !== 'development') {
+        const prodBackendPath = path.join(process.resourcesPath, 'backend', 'main.py');
+        if (require('fs').existsSync(prodBackendPath)) {
+          scriptPath = prodBackendPath;
+          spawnArgs = [scriptPath];
+        }
+      }
 
-      log.info('Starting Python backend:', pythonPath, scriptPath);
+      log.info('Starting Python backend process:', pythonExecutable, spawnArgs);
 
-      this.pythonProcess = spawn(pythonPath, [scriptPath], {
-        env: { ...process.env, PYTHONUNBUFFERED: '1' }
-      });
+      try {
+        this.pythonProcess = spawn(pythonExecutable, spawnArgs, {
+          env: { ...process.env, PYTHONUNBUFFERED: '1' }
+        });
+      } catch (err) {
+        log.error('Spawn exception:', err);
+        return resolve();
+      }
 
       let resolved = false;
 
       this.pythonProcess.stdout.on('data', (data) => {
         const output = data.toString();
-        log.info('Python:', output);
+        log.info('Python stdout:', output);
         if (output.includes('http://127.0.0.1:5000') && !resolved) {
           resolved = true;
           resolve();
@@ -134,7 +146,15 @@ class CleanGeniusApp {
       });
 
       this.pythonProcess.stderr.on('data', (data) => {
-        log.error('Python Error:', data.toString());
+        log.error('Python stderr:', data.toString());
+      });
+
+      this.pythonProcess.on('error', (err) => {
+        log.error('Python process failed to start:', err);
+        if (!resolved) {
+          resolved = true;
+          resolve();
+        }
       });
 
       this.pythonProcess.on('close', (code) => {
@@ -143,55 +163,60 @@ class CleanGeniusApp {
 
       setTimeout(() => {
         if (!resolved) {
-          resolve(); // Resolve anyway after 3s
+          resolved = true;
+          resolve();
         }
-      }, 3000);
+      }, 4000);
     });
   }
 
   setupIPC() {
+    const safeFetchJson = async (url, options = {}) => {
+      try {
+        const response = await fetch(url, options);
+        return await response.json();
+      } catch (err) {
+        log.error(`API fetch error on ${url}:`, err);
+        return { success: false, error: `Backend API server unreachable (${err.message})` };
+      }
+    };
+
     ipcMain.handle('start-scan', async (event, options) => {
-      const response = await fetch('http://127.0.0.1:5000/api/scan/start', {
+      return await safeFetchJson('http://127.0.0.1:5000/api/scan/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(options)
       });
-      return await response.json();
     });
 
     ipcMain.handle('get-scan-results', async (event, scanId) => {
-      const response = await fetch(`http://127.0.0.1:5000/api/scan/${scanId}`);
-      return await response.json();
+      return await safeFetchJson(`http://127.0.0.1:5000/api/scan/${scanId}`);
     });
 
     ipcMain.handle('start-cleanup', async (event, options) => {
-      const response = await fetch('http://127.0.0.1:5000/api/cleanup/start', {
+      return await safeFetchJson('http://127.0.0.1:5000/api/cleanup/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(options)
       });
-      return await response.json();
     });
 
     ipcMain.handle('rollback-cleanup', async (event, sessionId) => {
-      const response = await fetch(`http://127.0.0.1:5000/api/cleanup/rollback/${sessionId}`, {
+      return await safeFetchJson(`http://127.0.0.1:5000/api/cleanup/rollback/${sessionId}`, {
         method: 'POST'
       });
-      return await response.json();
     });
 
     ipcMain.handle('ai-analyze', async (event, data) => {
-      const response = await fetch('http://127.0.0.1:5000/api/ai/analyze', {
+      return await safeFetchJson('http://127.0.0.1:5000/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      return await response.json();
     });
 
     ipcMain.handle('test-ai-connection', async (event, provider) => {
-      const response = await fetch(`http://127.0.0.1:5000/api/ai/test/${provider}`);
-      return await response.json();
+      return await safeFetchJson(`http://127.0.0.1:5000/api/ai/test/${provider}`);
     });
 
     ipcMain.handle('get-settings', () => {
@@ -223,24 +248,21 @@ class CleanGeniusApp {
       });
 
       if (filePath) {
-        const response = await fetch('http://127.0.0.1:5000/api/reports/export', {
+        return await safeFetchJson('http://127.0.0.1:5000/api/reports/export', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...data, filePath })
         });
-        return await response.json();
       }
       return { cancelled: true };
     });
 
     ipcMain.handle('get-system-info', async () => {
-      const response = await fetch('http://127.0.0.1:5000/api/system/info');
-      return await response.json();
+      return await safeFetchJson('http://127.0.0.1:5000/api/system/info');
     });
 
     ipcMain.handle('get-dashboard', async () => {
-      const response = await fetch('http://127.0.0.1:5000/api/dashboard');
-      return await response.json();
+      return await safeFetchJson('http://127.0.0.1:5000/api/dashboard');
     });
   }
 
