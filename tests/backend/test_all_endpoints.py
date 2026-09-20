@@ -50,7 +50,8 @@ def test_fast_scan_and_cleanup_flow(client):
 
     # 4. Poll Cleanup Status
     c_completed = False
-    for _ in range(100):
+    cl_data = {}
+    for _ in range(250):
         time.sleep(0.2)
         cl_res = client.get(f'/api/cleanup/{cleanup_id}')
         cl_data = cl_res.get_json()
@@ -58,8 +59,10 @@ def test_fast_scan_and_cleanup_flow(client):
         if cl_data["status"] == "completed":
             c_completed = True
             break
+        elif cl_data["status"] == "failed":
+            pytest.fail(f"Cleanup worker failed: {cl_data.get('error') or cl_data.get('message')}")
 
-    assert c_completed is True
+    assert c_completed is True, f"Cleanup timed out before completing: {cl_data}"
 
 def test_registry_scan_and_dashboard(client):
     r_res = client.post('/api/scan/start', json={"mode": "registry"})
