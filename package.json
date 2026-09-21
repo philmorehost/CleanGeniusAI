@@ -1,9 +1,20 @@
 {
   "name": "cleangenius-ai",
   "version": "1.0.0",
-  "description": "AI-Powered Windows Disk Cleanup Utility",
+  "description": "AI-powered Windows disk cleanup tool",
+  "author": {
+    "name": "CleanGenius Team",
+    "email": "support@cleangenius.ai"
+  },
+  "license": "MIT",
   "main": "src/main/index.js",
+  "homepage": "https://github.com/cleangenius/cleangenius-ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cleangenius/cleangenius-ai.git"
+  },
   "scripts": {
+    "prepare-build": "node scripts/prepare-build.js",
     "dev": "node scripts/dev.js",
     "dev:electron": "cross-env NODE_ENV=development electron .",
     "dev:python": "python src/backend/main.py",
@@ -11,8 +22,9 @@
     "test": "pytest tests/backend && jest tests/frontend",
     "test:python": "pytest tests/backend",
     "test:js": "jest tests/frontend",
-    "build": "electron-builder --win",
-    "build:portable": "electron-builder --win portable"
+    "build": "npm run prepare-build && electron-builder --win",
+    "build:dir": "electron-builder --win --dir",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "electron-log": "^5.1.2",
@@ -22,39 +34,16 @@
   "devDependencies": {
     "cross-env": "^7.0.3",
     "electron": "^28.1.3",
-    "electron-builder": "^24.9.1",
+    "electron-builder": "^24.13.3",
     "jest": "^29.7.0"
   },
   "build": {
     "appId": "com.cleangenius.ai",
     "productName": "CleanGenius AI",
+    "asar": true,
     "directories": {
-      "output": "dist"
-    },
-    "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
-      "requestedExecutionLevel": "requireAdministrator",
-      "extraResources": [
-        {
-          "from": "src/backend",
-          "to": "backend"
-        },
-        {
-          "from": "config",
-          "to": "config"
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "license": "LICENSE",
-      "include": "build/installer.nsh"
+      "output": "dist",
+      "buildResources": "resources"
     },
     "files": [
       "src/**/*",
@@ -62,6 +51,34 @@
       "config/**/*",
       "build/**/*",
       "package.json"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "publisherName": "CleanGenius Team"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": true,
+      "include": "build/installer.nsh",
+      "license": "LICENSE"
+    },
+    "extraResources": [
+      {
+        "from": "src/backend",
+        "to": "backend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "config",
+        "to": "config",
+        "filter": ["**/*"]
+      }
     ]
   }
 }
