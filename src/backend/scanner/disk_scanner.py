@@ -124,6 +124,9 @@ class DiskScanner:
                 continue
 
             for dirpath, dirnames, filenames in os.walk(root, topdown=True):
+                if len(files) >= max_files:
+                    dirnames[:] = []
+                    break
                 if _is_protected(dirpath):
                     dirnames[:] = []
                     continue
@@ -131,6 +134,7 @@ class DiskScanner:
 
                 for fn in filenames:
                     if len(files) >= max_files:
+                        dirnames[:] = []
                         break
                     fp = os.path.join(dirpath, fn)
                     try:
@@ -157,6 +161,7 @@ class DiskScanner:
                     if progress_cb and (processed % 10 == 0 or processed == 1):
                         progress_cb(processed, max_files, f"Scanning {dirpath[:50]}...")
                 if len(files) >= max_files:
+                    dirnames[:] = []
                     break
 
         if progress_cb:

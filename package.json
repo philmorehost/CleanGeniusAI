@@ -55,7 +55,6 @@
     ],
     "win": {
       "target": ["nsis"],
-      "icon": "resources/icons/icon.png",
       "artifactName": "${productName}-Setup-${version}.${ext}",
       "publisherName": "CleanGenius Team"
     },
