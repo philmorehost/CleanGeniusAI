@@ -43,13 +43,24 @@ class GeminiProvider(AIProvider):
         return json.loads(self.analyze_files(scan_results.get("files", []), scan_results.get("context", {})))
 
     def test_connection(self) -> bool:
-        if os.getenv("MOCK_AI", "false").lower() == "true" or not self.api_key:
-            return True
+        success, _ = self.test_connection_detailed()
+        return success
+
+    def test_connection_detailed(self) -> tuple[bool, str]:
+        if os.getenv("MOCK_AI", "false").lower() == "true":
+            return True, "Connected successfully (Mock Mode)"
+        if not self.api_key:
+            self.api_key = os.getenv("GEMINI_API_KEY", "")
+        if not self.api_key:
+            return False, "Gemini API key is missing. Please enter your API key."
         try:
             import google.generativeai as genai
             genai.configure(api_key=self.api_key)
             gmodel = genai.GenerativeModel(self.model)
             gmodel.generate_content("test")
-            return True
-        except Exception:
-            return False
+            return True, "Connected to Google Gemini API successfully!"
+        except Exception as e:
+            err_str = str(e)
+            if "api_key" in err_str.lower() or "invalid" in err_str.lower():
+                return False, "Authentication failed: Invalid Gemini API Key."
+            return False, f"Gemini API error: {err_str}"

@@ -1,6 +1,11 @@
 <div class="card">
   <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;">Disk Scan Engine</h2>
-  <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Select scan intensity mode to identify junk files, dev caches, and registry issues.</p>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Select scan mode. Deep scan runs 100% locally with optional AI enhancement.</p>
+    <label style="font-size: 13px; display: flex; align-items: center; gap: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+      <input type="checkbox" id="chk-enable-ai" checked> Enable AI Insights
+    </label>
+  </div>
 
   <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
     <div class="card" style="border-color: var(--primary-blue); cursor: pointer;" onclick="runScan('fast')">
@@ -28,8 +33,11 @@
 
 <div class="card" id="scan-results-card" style="display: none;">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-    <h3 class="card-title" style="margin: 0;">Scan Results & AI Recommendations</h3>
-    <button class="btn" onclick="navigate('cleanup')">Proceed to Cleanup</button>
+    <h3 class="card-title" style="margin: 0;">Scan Results & Analysis</h3>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn" style="background-color: var(--accent-red); font-weight: 700;" onclick="cleanAllScannedFiles()">🔥 Remove All / Clean All</button>
+      <button class="btn btn-secondary" onclick="cleanSelectedCategories()">🧹 Clean Selected</button>
+    </div>
   </div>
   <div id="scan-results-content" style="font-size: 14px; color: var(--text-main);">
   </div>

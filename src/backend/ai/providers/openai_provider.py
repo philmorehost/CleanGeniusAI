@@ -51,11 +51,29 @@ class OpenAIProvider(AIProvider):
     def get_cleanup_recommendations(self, scan_results: dict) -> dict:
         return json.loads(self.analyze_files(scan_results.get("files", []), scan_results.get("context", {})))
 
+    def _ensure_client(self):
+        if not self.api_key:
+            self.api_key = os.getenv("OPENAI_API_KEY", "")
+        if self.api_key and not self.client and not os.getenv("MOCK_AI", "false").lower() == "true":
+            self.client = OpenAI(api_key=self.api_key)
+
     def test_connection(self) -> bool:
-        if os.getenv("MOCK_AI", "false").lower() == "true" or not self.client:
-            return True
+        success, _ = self.test_connection_detailed()
+        return success
+
+    def test_connection_detailed(self) -> tuple[bool, str]:
+        if os.getenv("MOCK_AI", "false").lower() == "true":
+            return True, "Connected successfully (Mock Mode)"
+        self._ensure_client()
+        if not self.api_key or not self.client:
+            return False, "OpenAI API key is missing. Please enter your API key."
         try:
             self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": "test"}], max_tokens=5)
-            return True
-        except Exception:
-            return False
+            return True, "Connected to OpenAI API successfully!"
+        except Exception as e:
+            err_str = str(e)
+            if "401" in err_str or "auth" in err_str.lower() or "invalid" in err_str.lower():
+                return False, "Authentication failed: Invalid OpenAI API Key."
+            if "429" in err_str or "quota" in err_str.lower():
+                return False, "Rate limit or quota exceeded on OpenAI account."
+            return False, f"OpenAI API error: {err_str}"

@@ -14,8 +14,13 @@
     </div>
   </div>
 
-  <div style="margin-top: 24px;">
-    <button class="btn" style="background-color: var(--accent-red); font-size: 16px; padding: 12px 24px;" onclick="executeCleanup()">🔥 Run Disk Cleanup Now</button>
+  <div id="cleanup-categories-selection" style="margin-top: 16px;">
+    <p style="font-size: 13px; color: var(--text-muted);">Select categories to remove or click <strong>Remove All / Clean All</strong> to clear all scanned junk.</p>
+  </div>
+
+  <div style="margin-top: 20px; display: flex; gap: 12px;">
+    <button class="btn" style="background-color: var(--accent-red); font-size: 16px; padding: 12px 24px; font-weight: 700;" onclick="cleanAllScannedFiles()">🔥 Remove All / Clean All</button>
+    <button class="btn btn-secondary" style="font-size: 14px; padding: 12px 20px;" onclick="cleanSelectedCategories()">🧹 Clean Selected Categories</button>
   </div>
 </div>
 

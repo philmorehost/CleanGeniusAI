@@ -306,10 +306,36 @@ def ai_analyze():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route("/api/ai/test/<provider>", methods=["GET"])
+@app.route("/api/ai/settings", methods=["POST"])
+def update_ai_settings():
+    try:
+        data = request.json or {}
+        provider = data.get("provider", "deepseek").lower()
+        api_key = data.get("api_key", "")
+        keys = data.get("keys", {})
+
+        if provider:
+            ai_analyzer.current_provider = provider
+            os.environ["DEFAULT_AI_PROVIDER"] = provider
+
+        if api_key:
+            os.environ[f"{provider.upper()}_API_KEY"] = api_key
+
+        for p_name, p_key in keys.items():
+            if p_key:
+                os.environ[f"{p_name.upper()}_API_KEY"] = p_key
+
+        ai_analyzer._provider_cache.clear()
+        return jsonify({"success": True, "message": "AI settings updated successfully"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/ai/test/<provider>", methods=["GET", "POST"])
 def test_ai_provider(provider):
     try:
-        res = ai_analyzer.test_provider(provider)
+        data = request.json if request.is_json else {}
+        api_key = data.get("api_key") or request.args.get("api_key")
+        res = ai_analyzer.test_provider(provider, api_key=api_key)
         return jsonify(res)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

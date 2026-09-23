@@ -10,10 +10,14 @@ class AIAnalyzer:
         self.optimizer = PromptOptimizer()
         self._provider_cache = {}
 
-    def _get_provider(self, name=None):
+    def _get_provider(self, name=None, api_key=None):
         pname = (name or self.current_provider).lower()
-        api_key = os.getenv(f"{pname.upper()}_API_KEY", "")
-        if pname not in self._provider_cache:
+        if not api_key:
+            api_key = os.getenv(f"{pname.upper()}_API_KEY", "")
+        else:
+            os.environ[f"{pname.upper()}_API_KEY"] = api_key
+
+        if api_key or pname not in self._provider_cache:
             self._provider_cache[pname] = AIProviderFactory.create_provider(pname, api_key)
         return self._provider_cache[pname]
 
@@ -30,47 +34,63 @@ class AIAnalyzer:
             except Exception:
                 continue
 
-        # Fallback rule-based recommendation if AI fails/unavailable
+        return self.generate_local_recommendations(scan_results)
+
+    def generate_local_recommendations(self, scan_results: dict) -> dict:
+        recs = []
+        cat_meta = {
+            "temp_files": {"action": "delete", "safety_score": 10, "reasoning": "Temporary system and app files are safe to clear."},
+            "browser_cache": {"action": "delete", "safety_score": 9, "reasoning": "Browser web caches consume space without affecting user data."},
+            "dev_cache": {"action": "delete", "safety_score": 9, "reasoning": "Build artifacts (node_modules, __pycache__, dist, .next) can be safely regenerated."},
+            "log_files": {"action": "delete", "safety_score": 8, "reasoning": "Diagnostic and application log files."},
+            "installers": {"action": "review", "safety_score": 7, "reasoning": "Downloaded setup packages and installer archives."},
+            "registry_junk": {"action": "delete", "safety_score": 9, "reasoning": "Invalid MRU keys, uninstaller entries, and orphaned DLL paths."},
+            "duplicate_files": {"action": "review", "safety_score": 8, "reasoning": "Duplicate files consuming redundant disk space."},
+            "miscellaneous": {"action": "review", "safety_score": 6, "reasoning": "Uncategorized leftover files."}
+        }
+
+        categories = scan_results.get("categories", {})
+        total_safe_bytes = 0
+        order = []
+
+        for cat, data in categories.items():
+            meta = cat_meta.get(cat, {"action": "review", "safety_score": 6, "reasoning": f"Scanned {cat} files."})
+            size_gb = round((data.get("size_bytes", 0)) / (1024**3), 2)
+            recs.append({
+                "category": cat,
+                "action": meta["action"],
+                "safety_score": meta["safety_score"],
+                "space_savings_gb": size_gb,
+                "reasoning": meta["reasoning"],
+                "conditions": []
+            })
+            if meta["safety_score"] >= 8:
+                total_safe_bytes += data.get("size_bytes", 0)
+                order.append(cat)
+
         return {
-            "recommendations": [
-                {
-                    "category": "temp_files",
-                    "action": "delete",
-                    "safety_score": 10,
-                    "space_savings_gb": round(scan_results.get("total_size_gb", 1.0) * 0.4, 2),
-                    "reasoning": "Rule-based fallback: Temporary files are safe to remove.",
-                    "conditions": []
-                },
-                {
-                    "category": "browser_cache",
-                    "action": "delete",
-                    "safety_score": 9,
-                    "space_savings_gb": round(scan_results.get("total_size_gb", 1.0) * 0.3, 2),
-                    "reasoning": "Rule-based fallback: Browser cache can be safely cleared.",
-                    "conditions": []
-                }
-            ],
+            "recommendations": recs,
             "overall_assessment": {
-                "safe_to_delete_gb": round(scan_results.get("total_size_gb", 1.0) * 0.7, 2),
+                "safe_to_delete_gb": round(total_safe_bytes / (1024**3), 2),
                 "risky_deletion_gb": 0.0,
-                "recommended_order": ["temp_files", "browser_cache"]
+                "recommended_order": order
             },
-            "warnings": ["AI offline - used rule-based recommendations."]
+            "warnings": ["Operating in local autonomous mode."]
         }
 
     def get_token_count(self):
         p = self._get_provider(self.current_provider)
         return getattr(p, "last_tokens", {"input": 0, "output": 0})
 
-    def test_provider(self, provider_name: str) -> dict:
+    def test_provider(self, provider_name: str, api_key: str = None) -> dict:
         t0 = time.time()
         try:
-            p = self._get_provider(provider_name)
-            success = p.test_connection()
+            p = self._get_provider(provider_name, api_key=api_key)
+            success, msg = p.test_connection_detailed()
             return {
                 "success": success,
                 "response_time": round(time.time() - t0, 3),
-                "message": "Connected successfully" if success else "Connection test failed"
+                "message": msg
             }
         except Exception as e:
             return {

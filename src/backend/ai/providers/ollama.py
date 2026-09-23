@@ -66,10 +66,16 @@ class OllamaProvider(AIProvider):
         return json.loads(self.analyze_files(scan_results.get("files", []), scan_results.get("context", {})))
 
     def test_connection(self) -> bool:
+        success, _ = self.test_connection_detailed()
+        return success
+
+    def test_connection_detailed(self) -> tuple[bool, str]:
         if os.getenv("MOCK_AI", "false").lower() == "true":
-            return True
+            return True, "Connected successfully (Mock Mode)"
         try:
             resp = requests.get(f"{self.base_url}/api/tags", timeout=3)
-            return resp.status_code == 200
+            if resp.status_code == 200:
+                return True, "Connected to local Ollama server successfully!"
+            return False, f"Ollama server returned HTTP {resp.status_code}"
         except Exception:
-            return False
+            return False, f"Ollama connection failed: Local server unreachable at {self.base_url}"

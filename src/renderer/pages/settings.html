@@ -15,10 +15,12 @@
 
   <div class="form-group" id="group-api-key">
     <label class="form-label">API Key</label>
-    <input type="password" class="form-input" id="setting-api-key" placeholder="sk-...">
+    <input type="password" class="form-input" id="setting-api-key" placeholder="sk-..." oninput="onKeyInput(this.value)">
   </div>
 
-  <div style="display: flex; gap: 12px; margin-top: 20px;">
+  <div id="conn-test-feedback" style="margin-top: 10px; font-size: 13px; min-height: 20px;"></div>
+
+  <div style="display: flex; gap: 12px; margin-top: 16px;">
     <button class="btn" onclick="saveAISettings()">Save Settings</button>
     <button class="btn btn-secondary" onclick="testAIConn()">Test Connection</button>
   </div>

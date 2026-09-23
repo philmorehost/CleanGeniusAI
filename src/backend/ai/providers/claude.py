@@ -46,12 +46,23 @@ class ClaudeProvider(AIProvider):
         return json.loads(self.analyze_files(scan_results.get("files", []), scan_results.get("context", {})))
 
     def test_connection(self) -> bool:
-        if os.getenv("MOCK_AI", "false").lower() == "true" or not self.api_key:
-            return True
+        success, _ = self.test_connection_detailed()
+        return success
+
+    def test_connection_detailed(self) -> tuple[bool, str]:
+        if os.getenv("MOCK_AI", "false").lower() == "true":
+            return True, "Connected successfully (Mock Mode)"
+        if not self.api_key:
+            self.api_key = os.getenv("CLAUDE_API_KEY", "")
+        if not self.api_key:
+            return False, "Claude API key is missing. Please enter your API key."
         try:
             import anthropic
             client = anthropic.Anthropic(api_key=self.api_key)
             client.messages.create(model=self.model, max_tokens=5, messages=[{"role": "user", "content": "test"}])
-            return True
-        except Exception:
-            return False
+            return True, "Connected to Claude API successfully!"
+        except Exception as e:
+            err_str = str(e)
+            if "401" in err_str or "auth" in err_str.lower() or "invalid" in err_str.lower():
+                return False, "Authentication failed: Invalid Claude API Key."
+            return False, f"Claude API error: {err_str}"

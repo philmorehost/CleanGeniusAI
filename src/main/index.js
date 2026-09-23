@@ -215,17 +215,33 @@ class CleanGeniusApp {
       });
     });
 
-    ipcMain.handle('test-ai-connection', async (event, provider) => {
-      return await safeFetchJson(`http://127.0.0.1:5000/api/ai/test/${provider}`);
+    ipcMain.handle('test-ai-connection', async (event, data) => {
+      const provider = typeof data === 'string' ? data : data.provider;
+      const apiKey = typeof data === 'object' ? data.apiKey : null;
+      return await safeFetchJson(`http://127.0.0.1:5000/api/ai/test/${provider}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey })
+      });
     });
 
     ipcMain.handle('get-settings', () => {
       return store.store;
     });
 
-    ipcMain.handle('save-settings', (event, settings) => {
+    ipcMain.handle('save-settings', async (event, settings) => {
       Object.keys(settings).forEach(key => {
         store.set(key, settings[key]);
+      });
+      // Sync settings with Flask backend
+      await safeFetchJson('http://127.0.0.1:5000/api/ai/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: settings.provider,
+          api_key: settings.apiKey,
+          keys: settings.apiKeys || {}
+        })
       });
       return { success: true };
     });
