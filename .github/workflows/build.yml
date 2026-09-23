@@ -49,6 +49,42 @@ jobs:
           New-Item -ItemType Directory -Force -Path config
         shell: pwsh
 
+      - name: Generate icon using .NET
+        run: |
+          New-Item -ItemType Directory -Force -Path resources/icons
+          Add-Type -AssemblyName System.Drawing
+
+          $bmp = New-Object System.Drawing.Bitmap(256, 256)
+          $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+          $color = [System.Drawing.Color]::FromArgb(45, 91, 255)
+          $brush = New-Object System.Drawing.SolidBrush($color)
+          $graphics.FillRectangle($brush, 0, 0, 256, 256)
+
+          $whiteBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
+          $graphics.FillEllipse($whiteBrush, 64, 64, 128, 128)
+
+          $bmp.Save("resources/icons/icon.png", [System.Drawing.Imaging.ImageFormat]::Png)
+
+          $sizes = @(256, 128, 64, 48, 32, 16)
+          $icons = @()
+          foreach ($size in $sizes) {
+            $icon = New-Object System.Drawing.Bitmap($size, $size)
+            $g = [System.Drawing.Graphics]::FromImage($icon)
+            $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+            $g.DrawImage($bmp, 0, 0, $size, $size)
+            $icons += $icon
+            $g.Dispose()
+          }
+
+          $icons[0].Save("resources/icons/icon.ico", [System.Drawing.Imaging.ImageFormat]::Icon)
+
+          $graphics.Dispose()
+          $bmp.Dispose()
+          $icons | ForEach-Object { $_.Dispose() }
+
+          Write-Host "✅ Icons generated successfully"
+        shell: pwsh
+
       - name: Run prepare build script
         run: npm run prepare-build
 
@@ -57,13 +93,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: List output files
+        run: Get-ChildItem -Path dist -Recurse -File
+        shell: pwsh
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           path: |
             dist/*.exe
-            dist/*.zip
           if-no-files-found: warn
 
       - name: Create Release
@@ -72,7 +111,6 @@ jobs:
         with:
           files: |
             dist/*.exe
-            dist/*.zip
           draft: false
           prerelease: false
           generate_release_notes: true
