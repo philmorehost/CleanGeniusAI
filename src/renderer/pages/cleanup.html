@@ -1,0 +1,33 @@
+<div class="card">
+  <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;">Cleanup & Safety Engine</h2>
+  <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Review files marked for deletion before executing soft or secure removal.</p>
+
+  <div class="form-group">
+    <label class="form-label">Deletion Options</label>
+    <div style="display: flex; gap: 20px; margin-top: 8px;">
+      <label style="font-size: 14px; display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="chk-recycle" checked> Send to Recycle Bin (Recommended)
+      </label>
+      <label style="font-size: 14px; display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="chk-shred"> Secure Shred (Permanent Overwrite)
+      </label>
+    </div>
+  </div>
+
+  <div id="cleanup-categories-selection" style="margin-top: 16px;">
+    <p style="font-size: 13px; color: var(--text-muted);">Select categories to remove or click <strong>Remove All / Clean All</strong> to clear all scanned junk.</p>
+  </div>
+
+  <div style="margin-top: 20px; display: flex; gap: 12px;">
+    <button class="btn" style="background-color: var(--accent-red); font-size: 16px; padding: 12px 24px; font-weight: 700;" onclick="cleanAllScannedFiles()">🔥 Remove All / Clean All</button>
+    <button class="btn btn-secondary" style="font-size: 14px; padding: 12px 20px;" onclick="cleanSelectedCategories()">🧹 Clean Selected Categories</button>
+  </div>
+</div>
+
+<div class="card" id="cleanup-status-card" style="display: none;">
+  <h3 class="card-title" id="cleanup-status-title">Executing Cleanup...</h3>
+  <div style="background-color: #0f1419; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 12px;">
+    <div id="cleanup-progress-bar" style="width: 0%; height: 100%; background-color: var(--accent-green); transition: width 0.3s;"></div>
+  </div>
+  <p style="color: var(--text-muted); font-size: 13px;" id="cleanup-status-msg">Cleaning files...</p>
+</div>

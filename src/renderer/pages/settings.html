@@ -1,0 +1,44 @@
+<div class="card">
+  <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;">Engine & AI Preferences</h2>
+  <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">CleanGenius runs 100% locally by default. Optionally enable AI for enhanced safety reasoning.</p>
+
+  <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+    <label style="font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 12px; cursor: pointer; color: var(--text-main);">
+      <input type="checkbox" id="chk-enable-ai-toggle" onchange="toggleAISettingsVisibility(this.checked)" style="transform: scale(1.3);">
+      Enable AI-Enhanced Analysis (Optional — requires internet & API key)
+    </label>
+    <p style="color: var(--text-muted); font-size: 12px; margin: 6px 0 0 32px;">When disabled, CleanGenius operates 100% offline using deterministic local safety rules.</p>
+  </div>
+
+  <div id="ai-settings-panel" style="display: none; border-top: 1px solid var(--border-color); padding-top: 16px;">
+    <div class="form-group">
+      <label class="form-label">Select AI Provider</label>
+      <select class="form-select" id="setting-provider" onchange="updateProviderFields()">
+        <option value="deepseek" selected>DeepSeek (Suggested — Cost Effective / Free Tier)</option>
+        <option value="openai">OpenAI (GPT-3.5 / GPT-4)</option>
+        <option value="claude">Anthropic Claude</option>
+        <option value="gemini">Google Gemini (Free Tier)</option>
+        <option value="ollama">Ollama (Local Offline AI)</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="group-api-key">
+      <label class="form-label">API Key</label>
+      <input type="password" class="form-input" id="setting-api-key" placeholder="sk-..." oninput="onKeyInput(this.value)">
+    </div>
+
+    <div id="conn-test-feedback" style="margin-top: 10px; font-size: 13px; min-height: 20px;"></div>
+
+    <div style="display: flex; gap: 12px; margin-top: 16px;">
+      <button class="btn" onclick="saveAISettings()">Save AI Settings</button>
+      <button class="btn btn-secondary" onclick="testAIConn()">Test Connection</button>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="card-ai-cost-usage" style="display: none;">
+  <h3 class="card-title">AI Usage & Cost (Optional Feature)</h3>
+  <div id="cost-tracker-info" style="font-size: 14px; color: var(--text-muted);">
+    Loading usage stats...
+  </div>
+</div>

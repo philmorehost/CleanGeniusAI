@@ -1,0 +1,82 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, master, "feature/*" ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Node dependencies
+        run: npm install
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Run Backend Tests
+        env:
+          MOCK_WINDOWS: "true"
+          MOCK_AI: "true"
+        run: pytest tests/backend
+
+      - name: Build Backend Standalone Executable
+        run: |
+          pyinstaller --onefile --name cleangenius-backend --distpath dist-backend --hidden-import=win32api --hidden-import=win32con --hidden-import=psutil --hidden-import=flask_cors --hidden-import=software.software_manager --hidden-import=rules.rules_engine --hidden-import=recommendation_service src/backend/main.py
+
+      - name: Verify Backend Executable
+        run: |
+          if (!(Test-Path "dist-backend/cleangenius-backend.exe")) {
+            Write-Error "cleangenius-backend.exe was not created!"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Build Electron app
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List output files
+        run: Get-ChildItem -Path dist -Recurse -File
+        shell: pwsh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/*.exe
+          if-no-files-found: warn
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.exe
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,44 @@
+<div class="card">
+  <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;">Disk Scan Engine</h2>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Select scan mode. Deep scan runs 100% locally with optional AI enhancement.</p>
+    <label style="font-size: 13px; display: flex; align-items: center; gap: 8px; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+      <input type="checkbox" id="chk-enable-ai" checked> Enable AI Insights
+    </label>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+    <div class="card" style="border-color: var(--primary-blue); cursor: pointer;" onclick="runScan('fast')">
+      <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">⚡ Fast Scan</h3>
+      <p style="color: var(--text-muted); font-size: 13px;">Scans common temp folders, browser caches, and npm caches.</p>
+    </div>
+    <div class="card" style="cursor: pointer;" onclick="runScan('deep')">
+      <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">🔍 Deep Scan</h3>
+      <p style="color: var(--text-muted); font-size: 13px;">Comprehensive analysis of user profile, logs, and build artifacts.</p>
+    </div>
+    <div class="card" style="cursor: pointer;" onclick="runScan('registry')">
+      <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">🛠️ Registry Scan</h3>
+      <p style="color: var(--text-muted); font-size: 13px;">Scans invalid MRUs, uninstaller keys, and orphaned registry paths.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="scan-progress-card" style="display: none;">
+  <h3 class="card-title" id="scan-status-title">Scanning in progress...</h3>
+  <div style="background-color: #0f1419; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 12px;">
+    <div id="scan-progress-bar" style="width: 0%; height: 100%; background-color: var(--primary-blue); transition: width 0.3s;"></div>
+  </div>
+  <p style="color: var(--text-muted); font-size: 13px;" id="scan-status-msg">Initializing...</p>
+</div>
+
+<div class="card" id="scan-results-card" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h3 class="card-title" style="margin: 0;">Scan Results & Analysis</h3>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn" style="background-color: var(--accent-red); font-weight: 700;" onclick="cleanAllScannedFiles()">🔥 Remove All / Clean All</button>
+      <button class="btn btn-secondary" onclick="cleanSelectedCategories()">🧹 Clean Selected</button>
+    </div>
+  </div>
+  <div id="scan-results-content" style="font-size: 14px; color: var(--text-main);">
+  </div>
+</div>

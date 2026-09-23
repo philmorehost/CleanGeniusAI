@@ -1,0 +1,28 @@
+<div class="card">
+  <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 12px;">Software Manager & Uninstaller</h2>
+  <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Scan installed applications, identify rarely used software, and trigger clean uninstallation.</p>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <button class="btn" onclick="loadInstalledSoftware()">🔄 Refresh Installed Software</button>
+    <div style="font-size: 13px; color: var(--text-muted);" id="software-count-label">Loading software list...</div>
+  </div>
+
+  <div id="software-list-container" style="display: flex; flex-direction: column; gap: 10px;">
+    <p style="color: var(--text-muted);">Click "Refresh" to load installed applications.</p>
+  </div>
+</div>
+
+<!-- Modal Confirmation for Uninstallation -->
+<div id="uninstall-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+  <div class="card" style="width: 480px; max-width: 90%; background: #161b22; border: 1px solid var(--border-color); padding: 24px;">
+    <h3 style="color: var(--accent-red); margin-top: 0;">⚠️ Confirm Uninstallation</h3>
+    <p id="uninstall-target-text" style="font-size: 14px; color: var(--text-main); margin-bottom: 16px;"></p>
+    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Please type the application name below to confirm launching the official uninstaller:</p>
+    <input type="text" id="uninstall-confirm-input" class="form-input" placeholder="Type application name..." style="margin-bottom: 16px;">
+
+    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+      <button class="btn btn-secondary" onclick="closeUninstallModal()">Cancel</button>
+      <button class="btn" style="background: var(--accent-red);" id="btn-confirm-uninstall">Uninstall Now</button>
+    </div>
+  </div>
+</div>
