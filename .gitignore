@@ -1,0 +1,33 @@
+# Build and compiled output
+bin/
+obj/
+**/bin/
+**/obj/
+**/[Bb]in/
+**/[Ob]j/
+**/[Bb]in/**
+**/[Ob]j/**
+
+# Visual Studio / IDE
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.cache
+*.log
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/
+project.lock.json
+project.fragment.lock.json
+
+# Artifacts & Publish
+artifacts/
+publish/
+
+# OS files
+.DS_Store
+Thumbs.db
