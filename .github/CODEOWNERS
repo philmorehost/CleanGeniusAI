@@ -1,0 +1,5 @@
+# Codeowners required review on dangerous or core safety paths
+src/CleanPro.Core/Cleanup/*
+src/CleanPro.Core/Advanced/*
+src/CleanPro.Core/Quarantine/*
+src/CleanPro.Core/Rules/*

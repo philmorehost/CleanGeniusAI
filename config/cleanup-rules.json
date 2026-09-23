@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0",
+  "categories": [
+    {
+      "id": "WindowsTemp",
+      "name": "Windows Temporary Files",
+      "group": "System",
+      "paths": [
+        "%TEMP%",
+        "%WINDIR%\\Temp"
+      ],
+      "filePatterns": [
+        "*.tmp",
+        "*.log",
+        "*.bak"
+      ],
+      "requiresAppClosed": false,
+      "requiresRestorePoint": false,
+      "defaultEnabled": true
+    },
+    {
+      "id": "RecycleBin",
+      "name": "Recycle Bin",
+      "group": "System",
+      "paths": [
+        "$Recycle.Bin"
+      ],
+      "filePatterns": [
+        "*"
+      ],
+      "requiresAppClosed": false,
+      "requiresRestorePoint": false,
+      "defaultEnabled": true
+    },
+    {
+      "id": "RegistryCleaner",
+      "name": "Registry Issues",
+      "group": "Registry",
+      "paths": [],
+      "filePatterns": [],
+      "requiresAppClosed": false,
+      "requiresRestorePoint": true,
+      "defaultEnabled": true
+    }
+  ]
+}

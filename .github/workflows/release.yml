@@ -1,0 +1,32 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish App
+        run: dotnet publish src/CleanPro.UI/CleanPro.UI.csproj -c Release -r win-x64 --self-contained true -o publish/
+
+      - name: Install WiX
+        run: dotnet tool install --global wix
+
+      - name: Build Installer
+        run: wix build installer/CleanPro.wxs -out CleanPro-Setup.msi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            CleanPro-Setup.msi
+            publish/**

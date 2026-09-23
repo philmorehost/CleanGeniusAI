@@ -1,0 +1,44 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, 'jules/**' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore CleanPro.sln
+
+      - name: Build
+        run: dotnet build CleanPro.sln --configuration Release --no-restore
+
+      - name: Run Unit Tests
+        run: dotnet test CleanPro.sln --configuration Release --no-build --verbosity normal --logger trx
+
+      - name: Publish Test Results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Test Results
+          path: '**/*.trx'
+          reporter: dotnet-trx
+
+      - name: Publish App (artifact for inspection)
+        run: dotnet publish src/CleanPro.UI/CleanPro.UI.csproj -c Release -r win-x64 --self-contained true -o publish/
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CleanPro-build-${{ github.sha }}
+          path: publish/
