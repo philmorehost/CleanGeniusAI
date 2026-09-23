@@ -80,6 +80,20 @@ async function startQuickScan() {
   runScan('fast');
 }
 
+async function waitForBackend(maxRetries = 10, delayMs = 1000, statusCallback = null) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const res = await fetch('http://127.0.0.1:5000/api/health', { signal: AbortSignal.timeout(2000) }).then(r => r.json());
+      if (res && res.status === 'healthy') return true;
+    } catch (e) {
+      // Backend starting up...
+    }
+    if (statusCallback) statusCallback(`Starting engine... (${i + 1}/${maxRetries})`);
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+  return false;
+}
+
 async function runScan(mode) {
   const pCard = document.getElementById('scan-progress-card');
   const rCard = document.getElementById('scan-results-card');
@@ -87,10 +101,19 @@ async function runScan(mode) {
   if (rCard) rCard.style.display = 'none';
 
   const msgElem = document.getElementById('scan-status-msg');
-  if (msgElem) msgElem.innerText = 'Initializing scan session...';
+  if (msgElem) msgElem.innerText = 'Initializing backend engine...';
 
   const barElem = document.getElementById('scan-progress-bar');
   if (barElem) barElem.style.width = '1%';
+
+  const isHealthy = await waitForBackend(10, 1000, (msg) => {
+    if (msgElem) msgElem.innerText = msg;
+  });
+
+  if (!isHealthy) {
+    if (msgElem) msgElem.innerText = 'Backend API server unreachable. Please restart CleanGenius AI.';
+    return;
+  }
 
   const aiEnabled = aiEnabledSetting || (document.getElementById('chk-enable-ai')?.checked ?? false);
 

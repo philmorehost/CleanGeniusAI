@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, Menu, Tray, shell, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 const Store = require('electron-store');
 const log = require('electron-log');
@@ -42,7 +43,7 @@ class CleanGeniusApp {
 
   async onReady() {
     this.createMainWindow();
-    await this.startPythonBackend().catch(err => log.error('Failed to start Python backend:', err));
+    await this.startPythonBackend().catch(err => log.error('Failed to start backend process:', err));
     this.setupIPC();
     this.createTray();
     this.checkForUpdates();
@@ -110,23 +111,32 @@ class CleanGeniusApp {
 
   async startPythonBackend() {
     return new Promise((resolve, reject) => {
-      const isWin = process.platform === 'win32';
-      let pythonExecutable = isWin ? 'python' : 'python3';
-      let scriptPath = path.join(__dirname, '../backend/main.py');
-      let spawnArgs = [scriptPath];
+      let backendCmd;
+      let backendArgs;
 
-      if (process.resourcesPath && process.env.NODE_ENV !== 'development') {
-        const prodBackendPath = path.join(process.resourcesPath, 'backend', 'main.py');
-        if (require('fs').existsSync(prodBackendPath)) {
-          scriptPath = prodBackendPath;
-          spawnArgs = [scriptPath];
-        }
+      const bundledExePath = path.join(process.resourcesPath || '', 'backend', 'cleangenius-backend.exe');
+      const bundledSrcPath = path.join(process.resourcesPath || '', 'backend-src', 'main.py');
+
+      if (process.env.NODE_ENV !== 'development' && fs.existsSync(bundledExePath)) {
+        // Production: run standalone PyInstaller compiled exe
+        backendCmd = bundledExePath;
+        backendArgs = [];
+      } else if (process.env.NODE_ENV !== 'development' && fs.existsSync(bundledSrcPath)) {
+        // Fallback: run Python script in resources/backend-src/
+        const isWin = process.platform === 'win32';
+        backendCmd = isWin ? 'python' : 'python3';
+        backendArgs = [bundledSrcPath];
+      } else {
+        // Development environment
+        const isWin = process.platform === 'win32';
+        backendCmd = isWin ? 'python' : 'python3';
+        backendArgs = [path.join(__dirname, '../backend/main.py')];
       }
 
-      log.info('Starting Python backend process:', pythonExecutable, spawnArgs);
+      log.info('Starting backend engine process:', backendCmd, backendArgs);
 
       try {
-        this.pythonProcess = spawn(pythonExecutable, spawnArgs, {
+        this.pythonProcess = spawn(backendCmd, backendArgs, {
           env: { ...process.env, PYTHONUNBUFFERED: '1' }
         });
       } catch (err) {
@@ -138,7 +148,7 @@ class CleanGeniusApp {
 
       this.pythonProcess.stdout.on('data', (data) => {
         const output = data.toString();
-        log.info('Python stdout:', output);
+        log.info('Backend stdout:', output);
         if (output.includes('http://127.0.0.1:5000') && !resolved) {
           resolved = true;
           resolve();
@@ -146,11 +156,11 @@ class CleanGeniusApp {
       });
 
       this.pythonProcess.stderr.on('data', (data) => {
-        log.error('Python stderr:', data.toString());
+        log.error('Backend stderr:', data.toString());
       });
 
       this.pythonProcess.on('error', (err) => {
-        log.error('Python process failed to start:', err);
+        log.error('Backend process error:', err);
         if (!resolved) {
           resolved = true;
           resolve();
@@ -158,7 +168,7 @@ class CleanGeniusApp {
       });
 
       this.pythonProcess.on('close', (code) => {
-        log.info('Python process exited with code', code);
+        log.info('Backend process exited with code', code);
       });
 
       setTimeout(() => {
@@ -166,7 +176,7 @@ class CleanGeniusApp {
           resolved = true;
           resolve();
         }
-      }, 4000);
+      }, 5000);
     });
   }
 

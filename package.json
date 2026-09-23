@@ -75,8 +75,12 @@
     },
     "extraResources": [
       {
+        "from": "dist-backend/cleangenius-backend.exe",
+        "to": "backend/cleangenius-backend.exe"
+      },
+      {
         "from": "src/backend",
-        "to": "backend",
+        "to": "backend-src",
         "filter": ["**/*"]
       },
       {
