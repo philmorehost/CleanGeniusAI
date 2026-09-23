@@ -14,7 +14,8 @@ from database.models import Database
 from scanner.disk_scanner import DiskScanner
 from scanner.duplicate_finder import DuplicateFinder
 from scanner.registry_scanner import RegistryScanner
-from ai.analyzer import AIAnalyzer
+from software.software_manager import SoftwareManager
+from recommendation_service import RecommendationService
 from cleanup.cleanup_engine import CleanupEngine
 from cleanup.safety_manager import SafetyManager
 from cleanup.rollback import RollbackManager
@@ -32,7 +33,8 @@ db = Database()
 scanner = DiskScanner(config)
 duplicate_finder = DuplicateFinder()
 registry_scanner = RegistryScanner()
-ai_analyzer = AIAnalyzer(config)
+software_manager = SoftwareManager()
+recommendation_service = RecommendationService(config)
 cleanup_engine = CleanupEngine(config)
 safety_manager = SafetyManager(config)
 rollback_manager = RollbackManager(db)
@@ -90,6 +92,7 @@ def start_scan():
         scan_mode = data.get("mode", "fast")
         paths = data.get("paths", [])
         options = data.get("options", {})
+        ai_enabled = options.get("ai_analysis", False)
 
         scan_id = db.create_scan_session(scan_mode)
 
@@ -114,16 +117,12 @@ def start_scan():
                     dupes = duplicate_finder.find_duplicates(res["files"], update_cb)
                     res["duplicates"] = dupes
 
+                # Hybrid Recommendation Service (Local rules first + optional AI)
+                update_cb(90, 100, "Evaluating safety rules and recommendations...")
+                recs = recommendation_service.analyze(res, ai_enabled=ai_enabled)
+                res["ai_recommendations"] = recs
                 db.store_scan_results(scan_id, res)
-
-                if options.get("ai_analysis", True):
-                    update_cb(90, 100, "Generating AI recommendations...")
-                    try:
-                        ai_recs = ai_analyzer.analyze(res)
-                        db.store_ai_recommendations(scan_id, ai_recs)
-                        res["ai_recommendations"] = ai_recs
-                    except Exception as ai_err:
-                        logger.error(f"AI analysis non-fatal error: {ai_err}")
+                db.store_ai_recommendations(scan_id, recs)
 
                 if scan_id in active_scans:
                     active_scans[scan_id]["status"] = "completed"
@@ -206,9 +205,7 @@ def start_cleanup():
                 "details": safety
             }), 400
 
-        # Filter to safe files unless strict_safety was enforced
         files_to_clean = safety.get("safe_files", files) if not safety["safe"] else files
-
         cleanup_id = db.create_cleanup_session(scan_id)
 
         def worker():
@@ -288,21 +285,27 @@ def rollback_cleanup(cleanup_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route("/api/ai/analyze", methods=["POST"])
-def ai_analyze():
+@app.route("/api/software/list", methods=["GET"])
+def list_software():
+    try:
+        apps = software_manager.scan_installed_software()
+        return jsonify({"success": True, "software": apps, "total": len(apps)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/software/uninstall", methods=["POST"])
+def uninstall_software():
     try:
         data = request.json or {}
-        recs = ai_analyzer.analyze(data)
-        tokens = ai_analyzer.get_token_count()
+        uninstall_string = data.get("uninstall_string", "")
+        app_name = data.get("name", "")
+        confirm_name = data.get("confirm_name", "")
 
-        cost = cost_tracker.log_usage(
-            provider=ai_analyzer.current_provider,
-            model="default",
-            input_tokens=tokens.get("input", 0),
-            output_tokens=tokens.get("output", 0)
-        )
-        recs["cost_usd"] = cost
-        return jsonify({"success": True, "recommendations": recs})
+        if confirm_name.strip().lower() != app_name.strip().lower():
+            return jsonify({"success": False, "error": "App confirmation name does not match."}), 400
+
+        res = software_manager.uninstall_software(uninstall_string)
+        return jsonify(res)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -312,20 +315,23 @@ def update_ai_settings():
         data = request.json or {}
         provider = data.get("provider", "deepseek").lower()
         api_key = data.get("api_key", "")
+        ai_enabled = data.get("ai_enabled", False)
         keys = data.get("keys", {})
 
-        if provider:
-            ai_analyzer.current_provider = provider
-            os.environ["DEFAULT_AI_PROVIDER"] = provider
+        if recommendation_service.ai_analyzer:
+            if provider:
+                recommendation_service.ai_analyzer.current_provider = provider
+                os.environ["DEFAULT_AI_PROVIDER"] = provider
 
-        if api_key:
-            os.environ[f"{provider.upper()}_API_KEY"] = api_key
+            if api_key:
+                os.environ[f"{provider.upper()}_API_KEY"] = api_key
 
-        for p_name, p_key in keys.items():
-            if p_key:
-                os.environ[f"{p_name.upper()}_API_KEY"] = p_key
+            for p_name, p_key in keys.items():
+                if p_key:
+                    os.environ[f"{p_name.upper()}_API_KEY"] = p_key
 
-        ai_analyzer._provider_cache.clear()
+            recommendation_service.ai_analyzer._provider_cache.clear()
+
         return jsonify({"success": True, "message": "AI settings updated successfully"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -335,7 +341,10 @@ def test_ai_provider(provider):
     try:
         data = request.json if request.is_json else {}
         api_key = data.get("api_key") or request.args.get("api_key")
-        res = ai_analyzer.test_provider(provider, api_key=api_key)
+        if recommendation_service.ai_analyzer:
+            res = recommendation_service.ai_analyzer.test_provider(provider, api_key=api_key)
+        else:
+            res = {"success": False, "message": "AI Analyzer not initialized."}
         return jsonify(res)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -343,7 +352,11 @@ def test_ai_provider(provider):
 @app.route("/api/ai/providers", methods=["GET"])
 def get_ai_providers():
     try:
-        return jsonify({"success": True, "providers": ai_analyzer.get_available_providers()})
+        if recommendation_service.ai_analyzer:
+            providers = recommendation_service.ai_analyzer.get_available_providers()
+        else:
+            providers = []
+        return jsonify({"success": True, "providers": providers})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

@@ -1,5 +1,7 @@
 let currentScanId = null;
 let savedApiKeys = { deepseek: '', openai: '', claude: '', gemini: '', ollama: '' };
+let aiEnabledSetting = false;
+let uninstallTargetApp = null;
 
 // Frameless Titlebar Controls
 document.getElementById('btn-minimize')?.addEventListener('click', () => window.electronAPI.minimizeWindow());
@@ -11,6 +13,7 @@ const pages = {
   dashboard: 'pages/dashboard.html',
   scan: 'pages/scan.html',
   cleanup: 'pages/cleanup.html',
+  'software-manager': 'pages/software-manager.html',
   schedule: 'pages/schedule.html',
   history: 'pages/history.html',
   settings: 'pages/settings.html',
@@ -28,6 +31,7 @@ async function navigate(page) {
     content.innerHTML = html;
     if (page === 'dashboard') loadDashboardData();
     if (page === 'settings') loadSettingsData();
+    if (page === 'software-manager') loadInstalledSoftware();
     if (page === 'onboarding' && window.initWiz) window.initWiz();
   } catch (err) {
     content.innerHTML = `<div class="card"><h2>Error loading page ${page}</h2></div>`;
@@ -88,7 +92,7 @@ async function runScan(mode) {
   const barElem = document.getElementById('scan-progress-bar');
   if (barElem) barElem.style.width = '1%';
 
-  const aiEnabled = document.getElementById('chk-enable-ai')?.checked ?? true;
+  const aiEnabled = aiEnabledSetting || (document.getElementById('chk-enable-ai')?.checked ?? false);
 
   try {
     const res = await window.electronAPI.startScan({
@@ -172,8 +176,32 @@ function displayScanResults(results) {
     html += '</div>';
   }
 
+  if (results.duplicates && results.duplicates.groups && results.duplicates.groups.length > 0) {
+    const wastedGb = (results.duplicates.wasted_gb || 0).toFixed(2);
+    html += `<div style="background: rgba(255, 170, 0, 0.08); padding: 12px; border-radius: 6px; border: 1px solid rgba(255, 170, 0, 0.3); margin-bottom: 16px;">
+      <h4 style="margin: 0 0 8px 0; color: #ffaa00;">👯 Duplicate Files Found (${results.duplicates.groups.length} groups, ${wastedGb} GB redundant)</h4>
+      <div style="max-height: 150px; overflow-y: auto; font-size: 12px; color: var(--text-muted);">`;
+    results.duplicates.groups.forEach((g, idx) => {
+      const gMb = ((g.wasted_bytes || 0) / (1024 ** 2)).toFixed(1);
+      html += `<div style="padding: 4px 0; border-bottom: 1px solid var(--border-color);">
+        <strong>Group #${idx + 1} (${g.count} copies, ${gMb} MB wasted):</strong><br>
+        • Keep: <code style="color: var(--accent-green);">${g.keep?.path || ''}</code><br>
+        • Duplicates: ${g.duplicates?.map(d => `<code style="color: var(--accent-red);">${d.path}</code>`).join(', ') || ''}
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+
   if (results.ai_recommendations && results.ai_recommendations.recommendations) {
-    html += '<h4 style="margin: 16px 0 8px 0; color: var(--primary-blue);">💡 Safety Insights & Recommendations:</h4>';
+    const isAi = results.ai_recommendations.ai_enhanced;
+    const badgeText = isAi ? "🤖 AI-Enhanced Recommendation" : "⚡ Local Rule Recommendation";
+    const badgeColor = isAi ? "var(--primary-blue)" : "var(--accent-green)";
+
+    html += `<h4 style="margin: 16px 0 8px 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+      Safety Analysis & Recommendations
+      <span style="font-size: 11px; background: rgba(255,255,255,0.08); color: ${badgeColor}; padding: 2px 8px; border-radius: 12px; border: 1px solid ${badgeColor};">${badgeText}</span>
+    </h4>`;
+
     results.ai_recommendations.recommendations.forEach(r => {
       html += `<div style="background: rgba(45,91,255,0.08); padding: 10px; border-radius: 6px; margin-bottom: 8px;">
         <strong>Category:</strong> ${r.category} | <strong>Action:</strong> ${r.action.toUpperCase()} | <strong>Safety Score:</strong> ${r.safety_score}/10<br>
@@ -270,6 +298,108 @@ async function pollCleanupStatus(cleanupId) {
   }, 500);
 }
 
+// Software Manager Methods
+async function loadInstalledSoftware() {
+  const container = document.getElementById('software-list-container');
+  const label = document.getElementById('software-count-label');
+  if (container) container.innerHTML = '<p style="color: var(--text-muted);">Scanning installed software registry...</p>';
+
+  try {
+    const res = await fetch('http://127.0.0.1:5000/api/software/list').then(r => r.json());
+    if (res && res.success && res.software) {
+      if (label) label.innerText = `Found ${res.software.length} installed applications`;
+
+      if (res.software.length === 0) {
+        container.innerHTML = '<p>No software found.</p>';
+        return;
+      }
+
+      let html = '';
+      res.software.forEach(app => {
+        const protectedBadge = app.is_protected ? '<span style="font-size: 11px; background: rgba(255,170,0,0.15); color: #ffaa00; padding: 2px 8px; border-radius: 10px;">Protected Component</span>' : '';
+        const unusedBadge = app.is_unused ? `<span style="font-size: 11px; background: rgba(255,69,96,0.15); color: var(--accent-red); padding: 2px 8px; border-radius: 10px;">Unused (${app.days_unused}d)</span>` : '';
+
+        html += `<div style="background: rgba(255,255,255,0.03); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-weight: 600; font-size: 15px; color: var(--text-main);">${app.name} ${protectedBadge} ${unusedBadge}</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Publisher: ${app.publisher} • Version: ${app.version} • Size: ${app.estimated_size_mb} MB</div>
+          </div>
+          <div>
+            ${app.is_protected ? '<button class="btn btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;">Protected</button>' : `<button class="btn" style="background: var(--accent-red);" onclick="openUninstallModal('${encodeURIComponent(JSON.stringify(app))}')">Uninstall</button>`}
+          </div>
+        </div>`;
+      });
+      container.innerHTML = html;
+    }
+  } catch (err) {
+    if (container) container.innerHTML = `<p style="color: var(--accent-red);">Failed to load software: ${err.message}</p>`;
+  }
+}
+
+function openUninstallModal(appJsonEncoded) {
+  const app = JSON.parse(decodeURIComponent(appJsonEncoded));
+  uninstallTargetApp = app;
+
+  const modal = document.getElementById('uninstall-modal');
+  const text = document.getElementById('uninstall-target-text');
+  const input = document.getElementById('uninstall-confirm-input');
+
+  if (modal && text && input) {
+    text.innerHTML = `Are you sure you want to uninstall <strong>${app.name}</strong>?`;
+    input.value = '';
+    modal.style.display = 'flex';
+
+    document.getElementById('btn-confirm-uninstall').onclick = () => confirmUninstall();
+  }
+}
+
+function closeUninstallModal() {
+  const modal = document.getElementById('uninstall-modal');
+  if (modal) modal.style.display = 'none';
+  uninstallTargetApp = null;
+}
+
+async function confirmUninstall() {
+  if (!uninstallTargetApp) return;
+
+  const input = document.getElementById('uninstall-confirm-input')?.value || '';
+  if (input.trim().lower() !== uninstallTargetApp.name.trim().lower()) {
+    alert('Application name mismatch. Please type the exact application name to confirm.');
+    return;
+  }
+
+  try {
+    const res = await fetch('http://127.0.0.1:5000/api/software/uninstall', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        uninstall_string: uninstallTargetApp.uninstall_string,
+        name: uninstallTargetApp.name,
+        confirm_name: input
+      })
+    }).then(r => r.json());
+
+    closeUninstallModal();
+    if (res && res.success) {
+      alert(`Official uninstaller for ${uninstallTargetApp.name} launched successfully.`);
+      loadInstalledSoftware();
+    } else {
+      alert(`Uninstallation failed: ${res?.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+}
+
+// Settings Toggle & AI Methods
+function toggleAISettingsVisibility(enabled) {
+  aiEnabledSetting = enabled;
+  const panel = document.getElementById('ai-settings-panel');
+  const costCard = document.getElementById('card-ai-cost-usage');
+  if (panel) panel.style.display = enabled ? 'block' : 'none';
+  if (costCard) costCard.style.display = enabled ? 'block' : 'none';
+}
+
 function updateProviderFields() {
   const provider = document.getElementById('setting-provider')?.value || 'deepseek';
   const input = document.getElementById('setting-api-key');
@@ -292,6 +422,12 @@ async function loadSettingsData() {
   try {
     const res = await window.electronAPI.getSettings();
     if (res) {
+      if (res.aiEnabled !== undefined) {
+        aiEnabledSetting = res.aiEnabled;
+        const toggle = document.getElementById('chk-enable-ai-toggle');
+        if (toggle) toggle.checked = res.aiEnabled;
+        toggleAISettingsVisibility(res.aiEnabled);
+      }
       if (res.apiKeys) {
         savedApiKeys = { ...savedApiKeys, ...res.apiKeys };
       }
@@ -305,12 +441,24 @@ async function loadSettingsData() {
   }
 }
 
+async function saveScheduleSettings() {
+  const freq = document.getElementById('schedule-freq')?.value || 'weekly';
+  const lowDisk = document.getElementById('chk-low-disk')?.checked ?? true;
+  try {
+    await window.electronAPI.saveSettings({ scheduleFreq: freq, scheduleLowDisk: lowDisk });
+    alert(`Schedule settings saved! Frequency: ${freq}, Low disk alert: ${lowDisk ? 'Enabled' : 'Disabled'}`);
+  } catch (err) {
+    alert(`Saved locally: Frequency=${freq}`);
+  }
+}
+
 async function saveAISettings() {
   const provider = document.getElementById('setting-provider').value;
   const apiKey = document.getElementById('setting-api-key').value;
+  const aiEnabled = document.getElementById('chk-enable-ai-toggle')?.checked ?? false;
   savedApiKeys[provider] = apiKey;
 
-  const res = await window.electronAPI.saveSettings({ provider, apiKey, apiKeys: savedApiKeys });
+  const res = await window.electronAPI.saveSettings({ aiEnabled, provider, apiKey, apiKeys: savedApiKeys });
   const feedback = document.getElementById('conn-test-feedback');
   if (feedback) {
     feedback.innerHTML = '<span style="color: var(--accent-green);">✅ Settings saved and synced with backend!</span>';
